@@ -201,3 +201,25 @@ test('Equipped rerenders label regional skills and leave unrelated skills and ot
     assert.equal(equipped.querySelectorAll('.trait-set-label').length, 1);
     dom.window.close();
 });
+
+test('Equipped XP column reserves space independently of changing XP text', async () => {
+    const { dom, document } = setup();
+    await settle();
+    const row = document.querySelector('.first button.row');
+    const xp = row.querySelector('.level');
+    const label = row.querySelector('.trait-set-label');
+    const style = dom.window.getComputedStyle(xp);
+    assert.notEqual(style.flexBasis, '', 'XP needs an explicit reserved column');
+    assert.notEqual(style.flexBasis, 'auto', 'XP content must not determine column width');
+    assert.equal(style.flexShrink, '0');
+    const basis = style.flexBasis;
+    for (const value of ['1 ', '999,999 ', '1,000,000 ', '99,999,999 ']) {
+        xp.firstChild.data = value;
+        await settle();
+        assert.equal(dom.window.getComputedStyle(xp).flexBasis, basis);
+        assert.equal(row.querySelector('.trait-set-label'), label);
+        assert.equal(row.querySelectorAll('.trait-set-label').length, 1);
+        assert.equal(xp.textContent, `${value}XP`);
+    }
+    dom.window.close();
+});

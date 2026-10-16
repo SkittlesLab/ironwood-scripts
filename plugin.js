@@ -11096,13 +11096,30 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
             pointer-events: none;
         }
         traits-page .trait-set-label + .level {
-            flex-shrink: 0;
+            flex: 0 0 4.5em;
+            width: 4.5em;
             white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        /* Equipped rows show changing XP in .level. Reserve its column so
+           digit changes cannot push the set label sideways. */
+        traits-page .description ~ .trait-set-label + .level {
+            flex-basis: 9em;
+            width: 9em;
+            white-space: normal;
+            overflow-wrap: anywhere;
         }
         @media (max-width: 600px) {
             traits-page .trait-set-label {
                 margin-inline: 0.25em;
                 font-size: 0.75em;
+            }
+            traits-page button.row:has(> .description ~ .trait-set-label) {
+                flex-wrap: wrap;
+            }
+            traits-page .description ~ .trait-set-label + .level {
+                flex-basis: calc(100% - var(--margin));
+                width: calc(100% - var(--margin));
             }
         }
     `;
