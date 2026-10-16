@@ -50,7 +50,7 @@ test('labels match cache membership, include Equipped, exclude unrelated skills,
         const expected = skill.displayName === 'Defense' ? 'All Sets' : regionalSets.find(set => set.skills.includes(skill.id))?.name;
         const label = rows[i].querySelector('.trait-set-label');
         assert.equal(label?.textContent, expected);
-        if (label) assert.equal(label.nextElementSibling.className, 'level');
+        if (label) assert.ok(label.nextElementSibling.classList.contains('level'));
         assert.equal(rows[i].querySelector('.title').textContent, `${skill.displayName} XP`);
         assert.equal(rows[i].querySelector('.level').textContent, 'Lv. 103');
     }
@@ -231,10 +231,34 @@ test('numeric column rules explicitly outrank normal game flex declarations', as
     // flex shorthand. Check CSSOM priorities here; verify the cascade and
     // label geometry with a conflicting game rule in a real browser.
     const rules = [...document.styleSheets].flatMap(sheet => [...sheet.cssRules]);
-    const equipped = rules.find(rule => rule.selectorText === 'traits-page .description ~ .trait-set-label + .level');
-    const numeric = rules.find(rule => rule.selectorText === 'traits-page .trait-set-label + .level');
+    const equipped = rules.find(rule => rule.selectorText === 'traits-page .trait-set-equipped-value');
+    const numeric = rules.find(rule => rule.selectorText === 'traits-page .trait-set-value');
     assert.equal(equipped.style.getPropertyPriority('flex-basis'), 'important');
     assert.equal(equipped.style.getPropertyPriority('width'), 'important');
     assert.equal(numeric.style.getPropertyPriority('flex'), 'important');
+    dom.window.close();
+});
+
+test('layout hooks apply directly to values and follow row reuse and toggle cleanup', async () => {
+    const { dom, document, config } = setup();
+    await settle();
+    const equipped = document.querySelector('.first button.row');
+    const main = document.querySelector('.last button.row');
+    assert.ok(equipped.classList.contains('trait-set-equipped-row'));
+    assert.ok(equipped.querySelector('.level').classList.contains('trait-set-equipped-value'));
+    assert.ok(main.querySelector('.level').classList.contains('trait-set-value'));
+    document.querySelector('.last .card').append(equipped);
+    await settle();
+    assert.equal(equipped.classList.contains('trait-set-equipped-row'), false);
+    assert.equal(equipped.querySelector('.level').classList.contains('trait-set-equipped-value'), false);
+    assert.ok(equipped.querySelector('.level').classList.contains('trait-set-value'));
+    main.querySelector('.title').textContent = 'Health XP';
+    await settle();
+    assert.equal(main.querySelector('.level').classList.contains('trait-set-value'), false);
+    config.handler(false);
+    assert.equal(document.querySelectorAll('.trait-set-value, .trait-set-equipped-value, .trait-set-equipped-row').length, 0);
+    config.handler(true);
+    await settle();
+    assert.ok(equipped.querySelector('.level').classList.contains('trait-set-value'));
     dom.window.close();
 });

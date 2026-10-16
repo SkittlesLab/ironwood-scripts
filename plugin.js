@@ -11031,7 +11031,7 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
             observer = null;
         }
         if(!enabled || page?.type !== 'traits' || page?.menu !== 'traits') {
-            document.querySelectorAll('traits-page .trait-set-label').forEach(label => label.remove());
+            cleanUp();
             return;
         }
         // Watch above the page so delayed rendering and replacement of the page
@@ -11043,6 +11043,8 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
 
     function updateLabels() {
         const labelledRows = new Set();
+        const labelledValues = new Set();
+        const equippedRows = new Set();
         document.querySelectorAll('traits-page .groups > * > .card').forEach(card => {
             const name = card.querySelector('.header > .name')?.textContent.trim();
             if(name !== 'Traits' && name !== 'Equipped') {
@@ -11073,11 +11075,34 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
                 if(label.nextElementSibling !== level || label.parentNode !== level.parentNode) {
                     level.before(label);
                 }
+                // Direct hooks avoid depending on Safari invalidating sibling
+                // selectors when a label is inserted during initial rendering.
+                labelledValues.add(level);
+                level.classList.add('trait-set-value');
+                level.classList.toggle('trait-set-equipped-value', name === 'Equipped');
+                row.classList.toggle('trait-set-equipped-row', name === 'Equipped');
+                if(name === 'Equipped') {
+                    equippedRows.add(row);
+                }
             });
         });
+        cleanUp(labelledRows, labelledValues, equippedRows);
+    }
+
+    function cleanUp(labelledRows = new Set(), labelledValues = new Set(), equippedRows = new Set()) {
         document.querySelectorAll('traits-page .trait-set-label').forEach(label => {
             if(!labelledRows.has(label.closest('button.row'))) {
                 label.remove();
+            }
+        });
+        document.querySelectorAll('traits-page .trait-set-value').forEach(value => {
+            if(!labelledValues.has(value)) {
+                value.classList.remove('trait-set-value', 'trait-set-equipped-value');
+            }
+        });
+        document.querySelectorAll('traits-page .trait-set-equipped-row').forEach(row => {
+            if(!equippedRows.has(row)) {
+                row.classList.remove('trait-set-equipped-row');
             }
         });
     }
@@ -11095,7 +11120,7 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
             opacity: 0.8;
             pointer-events: none;
         }
-        traits-page .trait-set-label + .level {
+        traits-page .trait-set-value {
             flex: 0 0 4.5em !important;
             width: 4.5em !important;
             white-space: nowrap;
@@ -11104,7 +11129,7 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
         /* Equipped rows show changing XP in .level. Reserve its column so
            digit changes cannot push the set label sideways. Priority keeps
            later game flex rules from restoring content-based sizing. */
-        traits-page .description ~ .trait-set-label + .level {
+        traits-page .trait-set-equipped-value {
             flex-basis: 9em !important;
             width: 9em !important;
             white-space: normal;
@@ -11115,10 +11140,10 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
                 margin-inline: 0.25em;
                 font-size: 0.75em;
             }
-            traits-page button.row:has(> .description ~ .trait-set-label) {
+            traits-page .trait-set-equipped-row {
                 flex-wrap: wrap;
             }
-            traits-page .description ~ .trait-set-label + .level {
+            traits-page .trait-set-equipped-value {
                 flex-basis: calc(100% - var(--margin)) !important;
                 width: calc(100% - var(--margin)) !important;
             }
