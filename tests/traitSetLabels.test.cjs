@@ -22,7 +22,8 @@ const sets = [...regionalSets,
     { name: 'Other', skills: [skills.find(s => s.displayName === 'Health').id] }
 ];
 const row = name => `<button class="row"><span class="image">🌲</span><span class="title">${name} XP</span><span class="effect">+20.29%</span><span class="level">Lv. 103</span></button>`;
-const page = () => `<traits-page><div class="groups"><div class="first"><div class="card"><div class="header"><span class="name">Equipped</span></div>${row('Defense')}</div></div><div class="last"><div class="card"><div class="header"><span class="name">Traits</span></div>${skills.map(s => row(s.displayName)).join('')}${row('Miningology')}</div></div></div></traits-page>`;
+const equippedRow = name => `<button class="row"><span class="image">🌲</span><div class="description"><div><span class="title">${name} XP</span><span class="effect">+18.65%</span></div><div class="diff">Lv. 90 <svg></svg> 92</div></div><div class="level">635,106 <span>XP</span></div></button>`;
+const page = () => `<traits-page><div class="groups"><div class="first"><div class="card"><div class="header"><span class="name">Equipped</span></div>${equippedRow('Defense')}</div></div><div class="last"><div class="card"><div class="header"><span class="name">Traits</span></div>${skills.map(s => row(s.displayName)).join('')}${row('Miningology')}</div></div></div></traits-page>`;
 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
 function setup(html = page()) {
     const dom = new JSDOM(`<body>${html}</body>`);
@@ -38,7 +39,7 @@ function setup(html = page()) {
     return { dom, document: dom.window.document, config, navigate: value => { current = value; handler(value); } };
 }
 
-test('labels match cache membership, exclude Equipped and unrelated skills, and preserve title/level', async () => {
+test('labels match cache membership, include Equipped, exclude unrelated skills, and preserve title/level', async () => {
     const { dom, document, config } = setup();
     await settle();
     assert.equal(config?.name, 'Show Skill Set Labels');
@@ -54,7 +55,11 @@ test('labels match cache membership, exclude Equipped and unrelated skills, and 
         assert.equal(rows[i].querySelector('.level').textContent, 'Lv. 103');
     }
     assert.equal(rows.at(-1).querySelector('.trait-set-label'), null);
-    assert.equal(document.querySelector('.first .trait-set-label'), null);
+    const equipped = document.querySelector('.first button.row');
+    assert.equal(equipped.querySelector('.trait-set-label')?.textContent, 'All Sets');
+    assert.equal(equipped.querySelector('.diff').textContent, 'Lv. 90  92');
+    assert.equal(equipped.querySelector('.level').textContent, '635,106 XP');
+    assert.equal(equipped.querySelector('.description').textContent, 'Defense XP+18.65%Lv. 90  92');
     dom.window.close();
 });
 
@@ -67,7 +72,7 @@ test('toggle, sorting/filtering, text reuse, replacement, and navigation remain 
     rows[0].style.display = 'none';
     await settle();
     const count = document.querySelectorAll('.trait-set-label').length;
-    assert.equal(count, 16);
+    assert.equal(count, 17);
     let mutations = 0;
     const observer = new dom.window.MutationObserver(records => mutations += records.length);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -79,12 +84,12 @@ test('toggle, sorting/filtering, text reuse, replacement, and navigation remain 
     assert.equal(button.querySelector('.trait-set-label').textContent, 'Mountain');
     document.querySelector('.first .card').append(button);
     await settle();
-    assert.equal(button.querySelector('.trait-set-label'), null);
+    assert.equal(button.querySelector('.trait-set-label').textContent, 'Mountain');
     config.handler(false);
     assert.equal(document.querySelectorAll('.trait-set-label').length, 0);
     config.handler(true);
     await settle();
-    assert.equal(document.querySelectorAll('.trait-set-label').length, count - 1);
+    assert.equal(document.querySelectorAll('.trait-set-label').length, count);
     document.querySelector('traits-page').outerHTML = page();
     await settle();
     assert.equal(document.querySelectorAll('.trait-set-label').length, count);
@@ -101,7 +106,7 @@ test('page arriving after the navigation event receives labels', async () => {
     const { dom, document } = setup('');
     document.body.innerHTML = page();
     await settle();
-    assert.equal(document.querySelectorAll('.trait-set-label').length, 16);
+    assert.equal(document.querySelectorAll('.trait-set-label').length, 17);
     dom.window.close();
 });
 
@@ -128,12 +133,12 @@ test('actual traitFilter sorting/filtering observer cooperates with labels', asy
     await settle();
     let rows = [...document.querySelectorAll('.last button.row')];
     assert.equal(rows[0].querySelector('.title').textContent, 'Woodcutting XP');
-    assert.equal(document.querySelectorAll('.trait-set-label').length, 16);
+    assert.equal(document.querySelectorAll('.trait-set-label').length, 17);
     blueprint.tabs[0].rows[0].action('Only Gathering');
     await settle();
     rows = [...document.querySelectorAll('.last button.row')];
     assert.equal(rows.filter(row => row.style.display !== 'none').length, 1);
-    assert.equal(document.querySelectorAll('.trait-set-label').length, 16);
+    assert.equal(document.querySelectorAll('.trait-set-label').length, 17);
     let mutations = 0;
     const observer = new dom.window.MutationObserver(records => mutations += records.length);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -152,4 +157,25 @@ test('distributed userscript registers the same standalone module', () => {
     } });
     vm.runInContext(fs.readFileSync('plugin.js', 'utf8'), context);
     assert.equal(registrations.get('traitSetLabels')?.toString(), source.trim());
+});
+
+test('Equipped rerenders label regional skills and leave unrelated skills and other cards alone', async () => {
+    const { dom, document, config } = setup();
+    const equipped = document.querySelector('.first .card');
+    equipped.innerHTML = '<div class="header"><span class="name">Equipped</span></div>'
+        + equippedRow('Alchemy') + equippedRow('Health');
+    const other = document.createElement('div');
+    other.className = 'card';
+    other.innerHTML = '<div class="header"><span class="name">Info</span></div>' + row('Woodcutting');
+    document.querySelector('.first').append(other);
+    await settle();
+    assert.equal(equipped.querySelector('.trait-set-label')?.textContent, 'Forest');
+    assert.equal(equipped.querySelectorAll('.trait-set-label').length, 1);
+    assert.equal(other.querySelector('.trait-set-label'), null);
+    config.handler(false);
+    assert.equal(document.querySelectorAll('.trait-set-label').length, 0);
+    config.handler(true);
+    await settle();
+    assert.equal(equipped.querySelectorAll('.trait-set-label').length, 1);
+    dom.window.close();
 });

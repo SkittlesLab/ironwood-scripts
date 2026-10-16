@@ -11034,8 +11034,9 @@ window.moduleRegistry.add('traitSetLabels', (configuration, events, skillCache, 
 
     function updateLabels() {
         const labelledRows = new Set();
-        document.querySelectorAll('traits-page .last > .card').forEach(card => {
-            if(card.querySelector('.header > .name')?.textContent.trim() !== 'Traits') {
+        document.querySelectorAll('traits-page .groups > * > .card').forEach(card => {
+            const name = card.querySelector('.header > .name')?.textContent.trim();
+            if(name !== 'Traits' && name !== 'Equipped') {
                 return;
             }
             card.querySelectorAll('button.row').forEach(row => {
