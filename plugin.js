@@ -10767,7 +10767,7 @@ window.moduleRegistry.add('targetAmountMarket', (configuration, elementWatcher, 
 }
 );
 // traitFilter
-window.moduleRegistry.add('traitFilter', (events, elementWatcher, configuration, components, localDatabase, elementCreator, colorMapper, skillCache) => {
+window.moduleRegistry.add('traitFilter', (events, elementWatcher, configuration, components, localDatabase, elementCreator, colorMapper, skillCache, skillSetCache) => {
 
     const DATABASE_KEY = 'trait-sort-type';
 
@@ -10841,6 +10841,15 @@ window.moduleRegistry.add('traitFilter', (events, elementWatcher, configuration,
         'Only Gathering': { filter: btn => getCategory(btn) === 'Gathering' },
         'Only Crafting': { filter: btn => getCategory(btn) === 'Crafting' },
         'Only Combat': { filter: btn => getCategory(btn) === 'Combat' },
+        'Only Forest': { filter: btn => isInSet(btn, 'Forest') },
+        'Only Mountain': { filter: btn => isInSet(btn, 'Mountain') },
+        'Only Ocean': { filter: btn => isInSet(btn, 'Ocean') },
+    }
+
+    function isInSet(btn, name) {
+        const title = getName(btn).trim();
+        const skill = skillCache.list.find(skill => title.startsWith(`${skill.displayName.toLowerCase()} `));
+        return !!skill && !!skillSetCache.byName[name]?.skills.includes(skill.id);
     }
 
     function getLevel(btn) {

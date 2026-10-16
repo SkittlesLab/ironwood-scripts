@@ -111,7 +111,7 @@ test('page arriving after the navigation event receives labels', async () => {
 });
 
 test('actual traitFilter sorting/filtering observer cooperates with labels', async () => {
-    const { dom, document, navigate } = setup();
+    const { dom, document, navigate, config: labelsConfig } = setup();
     const $ = require('../packager/node_modules/jquery')(dom.window);
     // jsdom has no layout; give jQuery's visibility selector a display-based equivalent.
     $.expr.pseudos.visible = element => element.style.display !== 'none';
@@ -125,7 +125,8 @@ test('actual traitFilter sorting/filtering observer cooperates with labels', asy
         { search: (value) => value.tabs[0].rows[0], addComponent: value => { blueprint = value; } },
         { getVariousEntry: async () => 'Name Desc', saveVariousEntry: () => {} },
         { addStyles: () => {} }, value => value,
-        { list: skills.map(skill => ({ ...skill, type: skill.displayName === 'Woodcutting' ? 'Gathering' : 'Combat' })) }
+        { list: skills.map(skill => ({ ...skill, type: skill.displayName === 'Woodcutting' ? 'Gathering' : 'Combat' })) },
+        { byName: Object.fromEntries(sets.map(set => [set.name, set])) }
     );
     await settle();
     config.handler(true);
@@ -139,6 +140,26 @@ test('actual traitFilter sorting/filtering observer cooperates with labels', asy
     rows = [...document.querySelectorAll('.last button.row')];
     assert.equal(rows.filter(row => row.style.display !== 'none').length, 1);
     assert.equal(document.querySelectorAll('.trait-set-label').length, 17);
+    // Set filtering must work from cache data even with labels disabled.
+    labelsConfig.handler(false);
+    for (const [name, members] of Object.entries(groups)) {
+        const dropdown = blueprint.tabs[0].rows[0];
+        assert.ok(dropdown.options.some(option => option.value === `Only ${name}`));
+        dropdown.action(`Only ${name}`);
+        await settle();
+        const visibleNames = [...document.querySelectorAll('.last button.row')]
+            .filter(row => row.style.display !== 'none')
+            .map(row => row.querySelector('.title').textContent.replace(/ XP$/, ''));
+        assert.deepEqual(visibleNames.sort(), [...members].sort());
+        assert.equal(document.querySelector('.first button.row').style.display, '');
+    }
+    // A newly rendered row is filtered under the retained Ocean selection.
+    document.querySelector('.last .card').insertAdjacentHTML('beforeend', row('Woodcutting'));
+    await settle();
+    assert.equal(document.querySelector('.last button.row:last-of-type').style.display, 'none');
+    blueprint.tabs[0].rows[0].action('None');
+    await settle();
+    assert.ok([...document.querySelectorAll('.last button.row')].every(row => row.style.display !== 'none'));
     let mutations = 0;
     const observer = new dom.window.MutationObserver(records => mutations += records.length);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -157,6 +178,7 @@ test('distributed userscript registers the same standalone module', () => {
     } });
     vm.runInContext(fs.readFileSync('plugin.js', 'utf8'), context);
     assert.equal(registrations.get('traitSetLabels')?.toString(), source.trim());
+    assert.equal(registrations.get('traitFilter')?.toString(), fs.readFileSync('features/traitFilter.js', 'utf8').trim());
 });
 
 test('Equipped rerenders label regional skills and leave unrelated skills and other cards alone', async () => {
