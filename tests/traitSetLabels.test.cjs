@@ -223,3 +223,18 @@ test('Equipped XP column reserves space independently of changing XP text', asyn
     }
     dom.window.close();
 });
+
+test('numeric column rules explicitly outrank normal game flex declarations', async () => {
+    const { dom, document } = setup();
+    await settle();
+    // jsdom does not consistently resolve important longhands against a later
+    // flex shorthand. Check CSSOM priorities here; verify the cascade and
+    // label geometry with a conflicting game rule in a real browser.
+    const rules = [...document.styleSheets].flatMap(sheet => [...sheet.cssRules]);
+    const equipped = rules.find(rule => rule.selectorText === 'traits-page .description ~ .trait-set-label + .level');
+    const numeric = rules.find(rule => rule.selectorText === 'traits-page .trait-set-label + .level');
+    assert.equal(equipped.style.getPropertyPriority('flex-basis'), 'important');
+    assert.equal(equipped.style.getPropertyPriority('width'), 'important');
+    assert.equal(numeric.style.getPropertyPriority('flex'), 'important');
+    dom.window.close();
+});

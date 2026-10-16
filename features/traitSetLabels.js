@@ -89,16 +89,17 @@
             pointer-events: none;
         }
         traits-page .trait-set-label + .level {
-            flex: 0 0 4.5em;
-            width: 4.5em;
+            flex: 0 0 4.5em !important;
+            width: 4.5em !important;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
         }
         /* Equipped rows show changing XP in .level. Reserve its column so
-           digit changes cannot push the set label sideways. */
+           digit changes cannot push the set label sideways. Priority keeps
+           later game flex rules from restoring content-based sizing. */
         traits-page .description ~ .trait-set-label + .level {
-            flex-basis: 9em;
-            width: 9em;
+            flex-basis: 9em !important;
+            width: 9em !important;
             white-space: normal;
             overflow-wrap: anywhere;
         }
@@ -111,8 +112,8 @@
                 flex-wrap: wrap;
             }
             traits-page .description ~ .trait-set-label + .level {
-                flex-basis: calc(100% - var(--margin));
-                width: calc(100% - var(--margin));
+                flex-basis: calc(100% - var(--margin)) !important;
+                width: calc(100% - var(--margin)) !important;
             }
         }
     `;
